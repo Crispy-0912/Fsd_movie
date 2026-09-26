@@ -3,6 +3,12 @@ const errorHandler = (err, req, res, next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   let message = err.message || 'Internal Server Error';
 
+  // Mongoose buffer timeout error (database not connected)
+  if (err.name === 'MongooseError' && err.message.includes('buffering timed out')) {
+    statusCode = 503;
+    message = 'Database connection is pending or unavailable. Please ensure MONGODB_URI is configured on Render and 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.';
+  }
+
   // Mongoose bad ObjectId / CastError
   if (err.name === 'CastError' && err.kind === 'ObjectId') {
     statusCode = 404;

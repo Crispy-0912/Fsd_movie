@@ -109,13 +109,24 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Database connection readiness check for database-backed routes
+const requireDatabase = (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is connecting or not yet configured. Please ensure MONGODB_URI is set in Render Environment and 0.0.0.0/0 is allowed in MongoDB Atlas.'
+    });
+  }
+  next();
+};
+
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/auth', requireDatabase, authRoutes);
+app.use('/api/users', requireDatabase, userRoutes);
 app.use('/api/movies', movieRoutes);
-app.use('/api/ratings', ratingRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/ratings', requireDatabase, ratingRoutes);
+app.use('/api/reviews', requireDatabase, reviewRoutes);
+app.use('/api/watchlist', requireDatabase, watchlistRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {
