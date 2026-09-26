@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
@@ -13,11 +14,56 @@ connectDB();
 
 const app = express();
 
-// Security / Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
+// Dynamic allowed origins for development, Vercel, and GitHub Pages
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'https://fsd-movie.vercel.app',
+  'https://crispy-0912.github.io'
+];
+
+if (process.env.CLIENT_URL) {
+  process.env.CLIENT_URL.split(',').forEach(url => {
+    const clean = url.trim().replace(/\/$/, '');
+    if (clean && !allowedOrigins.includes(clean)) {
+      allowedOrigins.push(clean);
+    }
+  });
+}
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // allow mobile apps, postman, curl
+  const cleanOrigin = origin.replace(/\/$/, '');
+  return (
+    allowedOrigins.includes(cleanOrigin) ||
+    cleanOrigin.endsWith('.vercel.app') ||
+    cleanOrigin.endsWith('.github.io') ||
+    cleanOrigin.includes('localhost') ||
+    cleanOrigin.includes('127.0.0.1')
+  );
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Rejected origin: ${origin}`);
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -42,11 +88,22 @@ const ratingRoutes = require('./routes/ratingRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const watchlistRoutes = require('./routes/watchlistRoutes');
 
-// Health Check Route
+// Root & Health Check Routes
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'MovieMate Backend API is running.',
+    health: '/api/health',
+    version: '1.0.0'
+  });
+});
+
 app.get('/api/health', (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
   res.status(200).json({
     success: true,
     message: 'MovieMate API is up and running!',
+    database: isDbConnected ? 'connected' : 'connecting_or_disconnected',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
