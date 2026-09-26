@@ -22,7 +22,7 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'moviemate_default_secret_key'
+      process.env.JWT_SECRET || 'moviemate_jwt_secure_secret_key_btech_2026'
     );
     const user = await User.findById(decoded.id).select('-password');
 
