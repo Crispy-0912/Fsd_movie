@@ -17,7 +17,8 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      family: 4,
     });
     isConnecting = false;
     console.log(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
